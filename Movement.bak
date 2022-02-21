@@ -1,0 +1,105 @@
+;; The first three lines of this file were inserted by DrRacket. They record metadata
+;; about the language level of this file in a form that our tools can easily process.
+#reader(lib "htdp-beginner-abbr-reader.ss" "lang")((modname Snake) (read-case-sensitive #t) (teachpacks ()) (htdp-settings #(#t constructor repeating-decimal #f #t none #f () #f)))
+; Rac-man movement (from ch 12 exercises)
+(require 2htdp/image)
+(require 2htdp/universe)
+(require 2htdp/iTunes)
+
+
+
+(define DIAM 20)
+(define playArea
+  (empty-scene 400 400))
+
+(define dotPic
+  (circle (/ DIAM 2) "solid" "green"))
+
+(define rac-man-pic
+  (circle (/ DIAM 2) "solid" "black"))
+
+(define-struct rac-man [x y direction])
+
+(define-struct game-state [rac-man dots speed])
+
+(define-struct gamestate [worm food pd])
+;(define worm
+;  (cons (make-posn 50 50) '()))
+
+(define (tock gs)
+  (cond
+    [(string=? (rac-man-direction (game-state-rac-man gs)) "up") (if (<= (rac-man-y (game-state-rac-man gs)) 0)
+                                         gs
+                                         (move gs "up"))]
+    [(string=? (rac-man-direction (game-state-rac-man gs)) "down") (if (>= (rac-man-y (game-state-rac-man gs)) (image-height playArea))
+                                          gs
+                                          (move gs "down"))]
+    [(string=? (rac-man-direction (game-state-rac-man gs)) "left") (if (<= (rac-man-x (game-state-rac-man gs)) 0)
+                                          gs
+                                          (move gs "left"))]
+    [else (if (<= (rac-man-x (game-state-rac-man gs)) 0) gs (move gs "right"))]))
+
+(define (render gs)
+  (place-image rac-man-pic (rac-man-x (game-state-rac-man gs)) (rac-man-y (game-state-rac-man gs))
+               (place-image dotPic (posn-x (game-state-dots gs)) (posn-y (game-state-dots gs)) playArea)))
+
+
+
+(define (move gs key)
+  (cond
+    [(string=? key "up") (cond
+                       [(<= (rac-man-y (game-state-rac-man gs)) 0) gs]
+                       [else (make-game-state (moveWormUp (game-state-rac-man gs)) (game-state-dots gs) "up")])]
+    [(string=? key "down") (cond
+                       [(>= (rac-man-y (game-state-rac-man gs)) (image-height playArea)) gs]
+                       [else (make-game-state (moveWormDown (game-state-rac-man gs)) (game-state-dots gs) "down")])]
+    [(string=? key "left") (cond
+                       [(<= (rac-man-x (game-state-rac-man gs)) 0) gs]
+                       [else (make-game-state (moveWormLeft (game-state-rac-man gs)) (game-state-dots gs) "left")])]
+    [(string=? key "right") (cond
+                       [(>= (rac-man-x (game-state-rac-man gs)) (image-width playArea)) gs]
+                       [else (make-game-state (moveWormRight (game-state-rac-man gs)) (game-state-dots gs) "right")])]
+    [else gs]))
+
+(define (moveWormUp rman)
+  (make-rac-man (rac-man-x rman) (- (rac-man-y rman) 2) (rac-man-direction rman)))
+
+(define (moveWormDown rman)
+  (make-rac-man (rac-man-x rman) (+ (rac-man-y rman) 2) (rac-man-direction rman)))
+
+(define (moveWormLeft rman)
+  (make-rac-man (- (rac-man-x rman) 2) (rac-man-y rman) (rac-man-direction rman)))
+
+
+(define (moveWormRight rman)
+  (make-rac-man (+ (rac-man-x rman) 2) (rac-man-y rman) (rac-man-direction rman)))
+
+
+(define (changeDir gs key)
+  (cond
+    [(string=? key "up") (make-game-state (make-rac-man (rac-man-x (game-state-rac-man gs)) (rac-man-y (game-state-rac-man gs)) "up") (game-state-dots gs) (game-state-speed gs))]
+    [(string=? key "down") (make-game-state (make-rac-man (rac-man-x (game-state-rac-man gs)) (rac-man-y (game-state-rac-man gs)) "down") (game-state-dots gs) (game-state-speed gs))]
+    [(string=? key "left") (make-game-state (make-rac-man (rac-man-x (game-state-rac-man gs)) (rac-man-y (game-state-rac-man gs)) "left") (game-state-dots gs) (game-state-speed gs))]
+    [(string=? key "right") (make-game-state (make-rac-man (rac-man-x (game-state-rac-man gs)) (rac-man-y (game-state-rac-man gs)) "right") (game-state-dots gs) (game-state-speed gs))]
+    [else gs]))
+
+(define (gameOver? gs)
+  (cond
+    [(<= (rac-man-y (game-state-rac-man gs)) 0) #true]
+    [(>= (rac-man-y (game-state-rac-man gs)) (image-height playArea)) #true]
+    [(<= (rac-man-x (game-state-rac-man gs)) 0) #true]
+    [(>= (rac-man-x (game-state-rac-man gs)) (image-width playArea)) #true]
+    [else #false]))
+(define (stopScreen gs)
+  (overlay/align "middle" "middle" (text "GAME OVER" 48 "black") (render gs)))
+  
+(define (main ws)
+  (big-bang ws
+    [on-tick tock]
+    [to-draw render]
+    [on-key changeDir]
+    [stop-when gameOver? stopScreen]))
+
+(define start  (make-game-state (make-rac-man 20 20 "right") (make-posn 200 200) 5))
+; (first (gamestate-worm start))
+(main start)
